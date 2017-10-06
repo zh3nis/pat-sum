@@ -50,7 +50,7 @@ def parse_args():
                            '/test.txt with input data')
   parser.add_argument('--data_dir', default='data_c16/', 
                       help='converted data directory. Should have trainFSM.txt/validFSM.txt' \
-                           '/testFSM.txt with converted data, and allFSM.txt which is a' \
+                           '/testFSM.txt with converted data, and allFSM.txt which is ' \
                            'concatenation of these three *FSM.txt files')
   parser.add_argument('--save_dir', default='saves',
                       help='saves directory')
@@ -432,105 +432,105 @@ if __name__ == '__main__':
           iters += config.num_steps
 
         speed = round(iters * config.batch_size / (time.time() - start_time))
-          print('epoch ', epoch + 1, end = ': ')
-          print('train ppl =', np.exp(costs / iters), end=', ')
-          print('lr =', my_lr, end=', ')
+        print('epoch ', epoch + 1, end = ': ')
+        print('train ppl =', np.exp(costs / iters), end=', ')
+        print('lr =', my_lr, end=', ')
 
-          # Get validation set perplexity
-          valid_costs = 0
-          valid_state = None
-          valid_iters = 0
+        # Get validation set perplexity
+        valid_costs = 0
+        valid_state = None
+        valid_iters = 0
 
-          valid_batches = batch_producer(valid_data, valid_raw_data,
-                                         config.batch_size, config.num_steps)
+        valid_batches = batch_producer(valid_data, valid_raw_data,
+                                       config.batch_size, config.num_steps)
 
-          for valid_batch in valid_batches:
-            my_valid_x = np.empty(
-              [config.batch_size, config.num_steps, config.max_word_len], 
-              dtype=np.int32)
-
-            for t in range(config.num_steps):
-              for i in range(config.batch_size):
-                my_valid_x[i, t] = word_ix_to_pat_ixs[valid_batch[0][i, t]]
-
-            if not valid_state: valid_state = sess.run(valid.init_state)
-            c, valid_state = sess.run([valid.cost, valid.state], 
-               feed_dict={valid.x: my_valid_x, valid.y: valid_batch[3], 
-               valid.init_state: valid_state})
-
-            valid_costs += c
-            valid_iters += config.num_steps
-
-          cur_perplexity = np.exp(valid_costs / valid_iters)
-          print('valid ppl =', cur_perplexity, end=', ')
-          print('speed =', speed)
-
-          if prev_perplexity - cur_perplexity < 0:
-            learning_rate *= config.lr_decay
-          prev_perplexity = cur_perplexity
-
-        # Get test set perplexity after training is done
-        test_costs = 0
-        test_state = None
-        test_iters = 0
-
-        test_batches = batch_producer(test_data, test_raw_data,
-                                      test_config.batch_size, test_config.num_steps)
-
-        for test_batch in test_batches:
-          my_test_x = np.empty(
-            [test_config.batch_size, test_config.num_steps, 
-             test_config.max_word_len], 
+        for valid_batch in valid_batches:
+          my_valid_x = np.empty(
+            [config.batch_size, config.num_steps, config.max_word_len], 
             dtype=np.int32)
 
           for t in range(config.num_steps):
-            for i in range(1):
-              my_test_x[i, t] = word_ix_to_pat_ixs[test_batch[0][i, t]]
+            for i in range(config.batch_size):
+              my_valid_x[i, t] = word_ix_to_pat_ixs[valid_batch[0][i, t]]
 
-          if not test_state: test_state = sess.run(test.init_state)
-          c, test_state = sess.run([test.cost, test.state], 
-            feed_dict={test.x: my_test_x, test.y: test_batch[3], 
-            test.init_state: test_state})
+          if not valid_state: valid_state = sess.run(valid.init_state)
+          c, valid_state = sess.run([valid.cost, valid.state], 
+             feed_dict={valid.x: my_valid_x, valid.y: valid_batch[3], 
+             valid.init_state: valid_state})
 
-          test_costs += c
-          test_iters += test_config.num_steps
+          valid_costs += c
+          valid_iters += config.num_steps
 
-        print('-' * 80)
-        print('Test set perplexity =', np.exp(test_costs / test_iters))
+        cur_perplexity = np.exp(valid_costs / valid_iters)
+        print('valid ppl =', cur_perplexity, end=', ')
+        print('speed =', speed)
 
-        save_path = saver.save(sess, os.path.join(args.save_dir, args.prefix + '-model.ckpt'))
-        print('Model saved in file: %s' % save_path)
+        if prev_perplexity - cur_perplexity < 0:
+          learning_rate *= config.lr_decay
+        prev_perplexity = cur_perplexity
 
-    else:
-      with tf.Session() as sess:
-        # Restore variables from disk.
-        saver.restore(sess, os.path.join(args.save_dir, args.prefix + '-model.ckpt'))
-        print('Model restored.')
+      # Get test set perplexity after training is done
+      test_costs = 0
+      test_state = None
+      test_iters = 0
 
-        # Get test set perplexity
-        test_costs = 0
-        test_state = None
-        test_iters = 0
+      test_batches = batch_producer(test_data, test_raw_data,
+                                    test_config.batch_size, test_config.num_steps)
 
-        test_batches = batch_producer(test_data, test_raw_data,
-                                      test_config.batch_size, test_config.num_steps)
+      for test_batch in test_batches:
+        my_test_x = np.empty(
+          [test_config.batch_size, test_config.num_steps, 
+           test_config.max_word_len], 
+          dtype=np.int32)
 
-        for test_batch in test_batches:
-          my_test_x = np.empty(
-            [test_config.batch_size, test_config.num_steps, 
-             test_config.max_word_len], 
-            dtype=np.int32)
+        for t in range(config.num_steps):
+          for i in range(1):
+            my_test_x[i, t] = word_ix_to_pat_ixs[test_batch[0][i, t]]
 
-          for t in range(test_config.num_steps):
-            for i in range(test_config.batch_size):
-              my_test_x[i, t] = word_ix_to_pat_ixs[test_batch[0][i, t]]
+        if not test_state: test_state = sess.run(test.init_state)
+        c, test_state = sess.run([test.cost, test.state], 
+          feed_dict={test.x: my_test_x, test.y: test_batch[3], 
+          test.init_state: test_state})
 
-          if not test_state: test_state = sess.run(test.init_state)
-          c, test_state = sess.run([test.cost, test.state], 
-            feed_dict={test.x: my_test_x, test.y: test_batch[3], 
-                       test.init_state: test_state})
+        test_costs += c
+        test_iters += test_config.num_steps
 
-          test_costs += c
-          test_iters += test_config.num_steps
+      print('-' * 80)
+      print('Test set perplexity =', np.exp(test_costs / test_iters))
 
-        print('Test set perplexity =', np.exp(test_costs / test_iters))
+      save_path = saver.save(sess, os.path.join(args.save_dir, args.prefix + '-model.ckpt'))
+      print('Model saved in file: %s' % save_path)
+
+  else:
+    with tf.Session() as sess:
+      # Restore variables from disk.
+      saver.restore(sess, os.path.join(args.save_dir, args.prefix + '-model.ckpt'))
+      print('Model restored.')
+
+      # Get test set perplexity
+      test_costs = 0
+      test_state = None
+      test_iters = 0
+
+      test_batches = batch_producer(test_data, test_raw_data,
+                                    test_config.batch_size, test_config.num_steps)
+
+      for test_batch in test_batches:
+        my_test_x = np.empty(
+          [test_config.batch_size, test_config.num_steps, 
+           test_config.max_word_len], 
+          dtype=np.int32)
+
+        for t in range(test_config.num_steps):
+          for i in range(test_config.batch_size):
+            my_test_x[i, t] = word_ix_to_pat_ixs[test_batch[0][i, t]]
+
+        if not test_state: test_state = sess.run(test.init_state)
+        c, test_state = sess.run([test.cost, test.state], 
+          feed_dict={test.x: my_test_x, test.y: test_batch[3], 
+                     test.init_state: test_state})
+
+        test_costs += c
+        test_iters += test_config.num_steps
+
+      print('Test set perplexity =', np.exp(test_costs / test_iters))
