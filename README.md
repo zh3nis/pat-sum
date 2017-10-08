@@ -23,5 +23,5 @@ python3 VD-LSTM-Pat-Sum.py
 ### Other options
 To see the full list of options run
 ```
-python3 LSTM-Syl.py -h
+python3 VD-LSTM-Pat-Sum.py -h
 ```
